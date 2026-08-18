@@ -12,7 +12,7 @@
 #   docker build -f server/docker/Dockerfile -t cpp-builder .
 # 或直接运行: server/docker/build-image.sh
 # ============================================================
-FROM emscripten/emsdk:latest
+FROM docker.1ms.run/emscripten/emsdk:latest
 
 # git: 平台侧 git 操作在容器内执行; 构建任务在容器内导出快照
 RUN apt-get update \
