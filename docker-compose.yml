@@ -1,0 +1,91 @@
+# ============================================================
+# C++ 编程平台 —— 容器化部署(后端 + DinD)
+#
+# 拓扑:
+#   server   平台后端容器(Node.js + git + 前端产物)
+#             └─ DOCKER_HOST=tcp://dind:2375 连接 DinD 守护进程
+#   dind     Docker-in-Docker 守护进程(privileged)
+#             └─ 在内部创建/销毁构建容器池(cpp-builder 镜像)
+#
+# 首次部署:
+#   docker compose up -d                        # 启动 DinD + 后端
+#   docker compose --profile tools run --rm builder-image   # 把 cpp-builder 装入 DinD
+#   # 访问 http://127.0.0.1:3000
+#
+# 说明:
+#   - 构建容器(1 核/2GB/禁网/丢弃能力/非特权)由后端经 DinD 创建,
+#     与宿主机 Docker 完全隔离; cpp-builder 镜像必须存在于 DinD 内部
+#     (builder-image 一次性服务负责装入, 幂等可重复执行)。
+#   - DinD 需 privileged; 为本地部署关闭了 TLS(plain tcp://dind:2375),
+#     若在不可信网络上运行请改用 DOCKER_TLS_CERTDIR=/certs + TLS。
+#   - server-data: 作品仓库/数据库/产物(后端数据), dind-data: 构建镜像与缓存。
+# ============================================================
+
+services:
+  dind:
+    image: docker:dind
+    container_name: cppp-dind
+    privileged: true
+    environment:
+      # 关闭 TLS -> 监听 tcp://0.0.0.0:2375(仅 compose 内网可达)
+      DOCKER_TLS_CERTDIR: ""
+    volumes:
+      - dind-data:/var/lib/docker
+    healthcheck:
+      test: ["CMD-SHELL", "docker info >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: cppp-server
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      DATA_DIR: /app/server/data
+      # 强制容器构建模式; 平台侧 git 与构建全部在构建容器内执行
+      BUILD_MODE: container
+      BUILD_IMAGE: cpp-builder:latest
+      # 后端 -> DinD 守护进程(compose 内网)
+      DOCKER_HOST: tcp://dind:2375
+      PUBLIC_URL: http://127.0.0.1:3000
+      # —— 可选配置(按需取消注释) ——
+      # ALLOW_REGISTRATION: "false"        # 关闭公开注册
+      # WEBHOOK_SECRET: change-me         # 内部 webhook 校验密钥
+      # SMTP_HOST: smtp.example.com       # 配置后启用真实邮件发送
+      # SMTP_PORT: "587"
+      # SMTP_USER: user@example.com
+      # SMTP_PASS: secret
+      # TRUST_PROXY: "1"                  # 位于 nginx 等反代之后时启用
+    volumes:
+      - server-data:/app/server/data
+    depends_on:
+      dind:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 一次性工具: 把构建镜像 cpp-builder 装入 DinD 守护进程。
+  # 用法: docker compose --profile tools run --rm builder-image (幂等, 可重复执行)
+  builder-image:
+    profiles: ["tools"]
+    image: docker:cli
+    volumes:
+      - .:/repo:ro
+    environment:
+      DOCKER_HOST: tcp://dind:2375
+    command: >
+      sh -c "until docker info >/dev/null 2>&1; do sleep 1; done;
+      docker build -f /repo/server/docker/Dockerfile -t cpp-builder /repo"
+    depends_on:
+      dind:
+        condition: service_healthy
+
+volumes:
+  server-data:
+  dind-data:

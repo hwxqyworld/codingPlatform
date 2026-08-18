@@ -1,0 +1,22 @@
+{
+  "name": "cpp-platform-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "C++ 编程平台后端 —— Node.js + Express + 内置 SQLite + git + Emscripten 构建",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "dockerode": "^5.0.1",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.5",
+    "tar-stream": "^3.2.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "sources": ["main.cpp"],
+  "libraries": ["SDL2"],
+  "flags": ["-O2", "-sALLOW_MEMORY_GROWTH=1"]
+}
