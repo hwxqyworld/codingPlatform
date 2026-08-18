@@ -43,17 +43,7 @@ RUN CACHE_DIR="$(em-config CACHE 2>/dev/null || true)"; \
 COPY server/docker/build.js /opt/platform/build.js
 COPY server/src/shell.html /opt/platform/shell.html
 
-# 动态查找 UID=1000 的用户，将其改名为 builder；若不存在则新建
-RUN OLD_USER=$(id -nu 1000) && \
-    if [ "$OLD_USER" != "builder" ]; then \
-        rm -rf /home/builder 2>/dev/null || true; \
-        usermod -l builder "$OLD_USER" && \
-        usermod -d /home/builder -m builder; \
-    fi && \
-    mkdir -p /work && \
-    chown builder:builder /work
-
-USER builder
+USER emscripten
 WORKDIR /work
 ENV HOME=/home/builder
 CMD ["sleep", "infinity"]
