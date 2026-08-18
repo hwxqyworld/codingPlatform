@@ -29,6 +29,7 @@ services:
     environment:
       # 关闭 TLS -> 监听 tcp://0.0.0.0:2375(仅 compose 内网可达)
       DOCKER_TLS_CERTDIR: ""
+      DOCKER_REGISTRY_MIRROR: https://docker.mirrors.ustc.edu.cn
     volumes:
       - dind-data:/var/lib/docker
     healthcheck:
