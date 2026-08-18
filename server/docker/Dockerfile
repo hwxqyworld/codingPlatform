@@ -43,10 +43,19 @@ RUN CACHE_DIR="$(em-config CACHE 2>/dev/null || true)"; \
 COPY server/docker/build.js /opt/platform/build.js
 COPY server/src/shell.html /opt/platform/shell.html
 
-# 非特权构建用户(容器内运行用户代码的进程; 容器无宿主机挂载, 权限不与宿主机冲突)
-RUN useradd -m -u 1000 builder \
- && mkdir -p /work \
- && chown builder:builder /work
+# 动态查找 UID=1000 的用户，将其改名为 builder；若不存在则新建
+RUN OLD_USER=$(id -nu 1000 2>/dev/null) && \
+    if [ -n "$OLD_USER" ] && [ "$OLD_USER" != "builder" ]; then \
+        echo "Renaming existing user $OLD_USER (UID 1000) to builder"; \
+        usermod -l builder -d /home/builder -m "$OLD_USER"; \
+    elif [ -z "$OLD_USER" ]; then \
+        echo "UID 1000 not found, creating user builder"; \
+        useradd -m -u 1000 builder; \
+    else \
+        echo "User builder already exists with UID 1000, skipping"; \
+    fi && \
+    mkdir -p /work && \
+    chown builder:builder /work
 
 USER builder
 WORKDIR /work
