@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # ============================================================
 # cpp-builder —— 平台构建容器镜像
 #
@@ -13,7 +12,7 @@
 #   docker build -f server/docker/Dockerfile -t cpp-builder .
 # 或直接运行: server/docker/build-image.sh
 # ============================================================
-FROM emscripten/emsdk:latest
+FROM docker.1ms.run/emscripten/emsdk:latest
 
 # git: 平台侧 git 操作在容器内执行; 构建任务在容器内导出快照
 RUN apt-get update \
@@ -44,12 +43,7 @@ RUN CACHE_DIR="$(em-config CACHE 2>/dev/null || true)"; \
 COPY server/docker/build.js /opt/platform/build.js
 COPY server/src/shell.html /opt/platform/shell.html
 
-# 非特权构建用户(容器内运行用户代码的进程; 容器无宿主机挂载, 权限不与宿主机冲突)
-RUN useradd -m -u 1000 builder \
- && mkdir -p /work \
- && chown builder:builder /work
-
-USER builder
+USER emscripten
 WORKDIR /work
 ENV HOME=/home/builder
 CMD ["sleep", "infinity"]
