@@ -50,7 +50,7 @@ test('buildEmccArgs: 多库映射(SDL2_image / SDL2_ttf / SDL1)', () => {
 // ---------------- 2. 配置解析 ----------------
 
 function makeRepo(files) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-cfg-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-cfg-'));
   for (const [rel, content] of Object.entries(files)) {
     const abs = path.join(dir, rel);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -120,7 +120,7 @@ let compiler;
 let tmpArtifacts;
 
 before(() => {
-  tmpArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-art-'));
+  tmpArtifacts = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-art-'));
   // 覆盖候选列表, 确保“工具链缺失”场景在本机已安装 emsdk 时也能稳定复现
   compiler = createCompiler({
     emcc: 'emcc-definitely-not-installed',

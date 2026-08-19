@@ -1,13 +1,13 @@
-# C++ 编程平台
+# 创玩 · C++ 创作平台
 
-一个本地部署的 C++ 创作平台：创作者用 **C++/SDL2** 写作品，平台用 **Emscripten** 编译成 WebAssembly，任何人都可以在浏览器里直接游玩。
+创玩(CppPlay) 是一个本地部署的 C++ 创作平台：创作者用 **C++/SDL2** 写作品，平台用 **Emscripten** 编译成 WebAssembly，任何人都可以在浏览器里直接游玩。
 
 ## 技术栈
 
 | 部分 | 技术 |
 | --- | --- |
 | 后端 | Node.js 22+ · Express · 内置 SQLite(`node:sqlite`) · dockerode |
-| 前端 | Vite · React 18 · React Router · Monaco(类 VSCode 编辑器) |
+| 前端 | Next.js 15(App Router) · React 19 · TypeScript(strict) · Monaco(类 VSCode 编辑器) |
 | 编译 | Emscripten(emcc) + SDL2 / SDL2_image / SDL2_ttf / SDL2_mixer 端口 |
 | 仓库 | 每个作品一个独立 git 仓库(裸仓库 + 编辑器目录) |
 | 构建 | 容器化安全构建(可选): Docker + 构建容器池, 平台侧 git 全部在容器内执行 |
@@ -16,9 +16,10 @@
 
 ```
 codingPlatform/
-├── server/                 # 后端
+├── server/                 # 后端(对外唯一入口)
 │   ├── src/
 │   │   ├── index.js        # 服务入口
+│   │   ├── start-all.js    # 生产启动器: 同进程拉起 Next.js standalone + Express
 │   │   ├── app.js          # 应用工厂(依赖注入, 便于测试)
 │   │   ├── config.js       # 配置中心(环境变量可覆盖)
 │   │   ├── db.js           # 数据层(SQLite)
@@ -27,23 +28,30 @@ codingPlatform/
 │   │   ├── buildQueue.js   # 构建容器池 + 任务队列(热备/扩容/缩容/超时)
 │   │   ├── dockerClient.js # Docker 客户端封装(unix socket / 命名管道 / tcp)
 │   │   ├── publisher.js    # 发布流水线
-│   │   ├── auth.js         # 极简创作者身份
-│   │   ├── routes.js       # REST API + 静态托管
+│   │   ├── auth.js         # 账号系统(注册/邮箱验证/登录/密码)
+│   │   ├── routes.js       # REST API + git-over-HTTP + 产物托管 + 前端反代
+│   │   ├── webProxy.js     # 页面请求 -> Next.js(内部 3010)反向代理
 │   │   ├── shell.html      # 作品构建外壳(全屏画布)
 │   │   └── templates/sdl2/ # 新作品模板(SDL2 示例)
-│   ├── Dockerfile          # 后端容器镜像(多阶段: 前端产物 + Node 运行时 + git)
+│   ├── Dockerfile          # 后端容器镜像(多阶段: Next.js 产物 + Node 运行时 + git)
 │   ├── docker/             # 容器构建镜像(安全模式)
 │   │   ├── Dockerfile      # emsdk + git + 离线预下载 SDL2 端口
 │   │   ├── build.js        # 容器内构建脚本(导出快照 + 解析 compile.json + emcc)
 │   │   └── build-image.sh  # 一键构建镜像(宿主机 Docker; 容器化部署时改用 compose)
 │   ├── tests/              # 命令行测试(node --test)
 │   └── data/               # 运行数据(仓库/数据库/产物, 自动生成)
-├── web/                    # 前端(代码不变)
-│   └── src/
-│       ├── pages/          # 主页/作品页/编辑器/管理/登录
-│       ├── components/     # 作品卡片等
-│       ├── api.js          # 接口封装
-│       └── monaco.js       # Monaco worker 初始化
+├── web/                    # 前端(Next.js App Router + TypeScript)
+│   ├── app/                # 页面与路由(SSR): 主页/全部/作品详情/创作者/编辑器/管理/登录
+│   │   ├── page.tsx        # 主页(服务端渲染作品列表 + Hero)
+│   │   ├── work/[id]/      # 作品详情页(SEO: metadata + JSON-LD)
+│   │   ├── creator/[name]/ # 创作者主页(公开, SEO 收录)
+│   │   ├── edit/[id]/      # 在线编辑器(Monaco 懒加载)
+│   │   ├── sitemap.ts      # 动态 sitemap.xml
+│   │   └── robots.ts       # robots.txt
+│   ├── components/         # 顶栏/页脚/卡片/页签等
+│   ├── lib/                # API 封装(客户端/服务端)/ 类型 / 认证 / 主题
+│   ├── scripts/            # copy-monaco / prepare-standalone
+│   └── public/monaco/      # Monaco 静态资源(构建时自动生成)
 ├── docker-compose.yml      # 容器化部署: 后端 + DinD(构建容器池的 Docker 引擎)
 ├── .dockerignore           # Docker 构建上下文排除项
 └── scripts/install-emscripten.bat   # 本地模式工具链一键安装
@@ -61,7 +69,7 @@ codingPlatform/
 # 1. 构建后端镜像并启动 DinD + 后端(首次构建前端产物需几分钟)
 docker compose up -d
 
-# 2. 首次: 把构建镜像 cpp-builder 装入 DinD 守护进程
+# 2. 首次: 把构建镜像 cppplay-builder 装入 DinD 守护进程
 #    (构建容器由后端经 DinD 创建, 镜像必须存在于 DinD 内部; 幂等可重复执行)
 docker compose --profile tools run --rm builder-image
 
@@ -78,16 +86,50 @@ docker compose --profile tools run --rm builder-image
 cd server && npm install
 cd ../web && npm install
 
-# 2. 启动后端(构建模式自动探测)
-#    - 检测到 Docker 且已构建 cpp-builder 镜像 -> 容器构建(安全模式)
-#    - 否则回退本地 emcc 编译(需先安装 Emscripten 工具链)
-cd ../web && npm run build   # 生产模式: 后端同端口托管前端页面
-cd ../server && npm start    # http://127.0.0.1:3000
+# 2. 生产模式: 构建前端(Next.js standalone 产物, 含 Monaco 静态资源)
+cd ../web && npm run build
+
+# 3. 启动平台(start-all.js 同进程拉起 Next.js 与 Express, 单端口 3000)
+cd ../server && npm run start:all   # http://127.0.0.1:3000
+#    (也可分开: npm start 仅启动后端; 构建模式自动探测 Docker/emcc)
 
 # 开发模式(前端热更新):
-#   终端 1: cd server && npm start
-#   终端 2: cd web && npm run dev     # http://127.0.0.1:5173
+#   终端 1: cd server && npm start          # 后端 3000(API/产物/git)
+#   终端 2: cd web && npm run dev           # Next.js 3010(页面, 经 3000 反代访问)
+#   浏览器统一访问 http://127.0.0.1:3000
 ```
+
+### 端到端冒烟测试
+
+生产栈启动后(`npm run start:all`), 可运行完整链路验证(注册→创作→发布→emcc 构建→SSR/SEO 输出):
+
+```bash
+cd server && node e2e-smoke.mjs
+```
+
+## 前端架构(Next.js 15 App Router)
+
+**拓扑**: Express 是唯一对外入口(`PORT=3000`)—— `/api` / `/w`(作品产物) / `/git`(git-over-HTTP)
+由 Express 直连处理(行为不变); 页面与静态资源由内部 Next.js 服务(3010)提供, Express 将其余请求
+反向代理过去(开发模式代理 `next dev`, 生产模式代理 standalone `server.js`)。
+
+```
+浏览器 ──▶ Express:3000 ──┬─ /api /w /git 直连处理
+                          └─ 其余页面 ──▶ Next.js:3010(SSR)
+```
+
+**SEO 优化**:
+- 服务端渲染(SSR): 主页/全部作品/作品详情/创作者主页均服务端直出内容, 爬虫无需执行 JS
+- 每页独立 `metadata`(标题/描述/OG/canonical); 作品页含 `CreativeWork` JSON-LD,
+  创作者页含 `ProfilePage` JSON-LD, 主页含 `WebSite` 结构化数据
+- 动态 `sitemap.xml`(收录全部已发布作品与创作者)与 `robots.txt`
+- 语义化 HTML(`main`/`nav`/`article`/`time`)、`lang="zh-CN"`、无障碍(跳转链接/焦点环/ARIA)
+
+**UX 优化**:
+- 首屏 JS 仅 ~110KB(Monaco 编辑器仅在编辑器页懒加载, 其余页面零编辑器成本)
+- 明亮/暗色双主题(跟随系统 + 手动切换, 无闪烁); 现代化 Hero + 渐变作品卡片
+- 构建中/排队中自动轮询刷新(主页与作品页), 无需手动刷新
+- 全局 loading/error 边界、骨架屏、移动端适配、`prefers-reduced-motion` 支持
 
 ## 容器化部署(Docker Compose)
 
@@ -99,13 +141,13 @@ docker compose up -d                        # 启动 DinD + 后端
 # 常用操作:
 docker compose ps                           # 查看状态
 docker compose logs -f server               # 后端日志
-docker compose --profile tools run --rm builder-image   # (重新)构建 cpp-builder 装入 DinD
+docker compose --profile tools run --rm builder-image   # (重新)构建 cppplay-builder 装入 DinD
 ```
 
 要点:
-- **镜像构建进 DinD**: 构建容器由后端经 DinD 创建, 因此 `cpp-builder` 镜像必须存在于
+- **镜像构建进 DinD**: 构建容器由后端经 DinD 创建, 因此 `cppplay-builder` 镜像必须存在于
   DinD 守护进程内部, 而不是宿主机 Docker。`builder-image` 一次性服务完成这一件事
-  (等价于在 DinD 内执行 `docker build -f server/docker/Dockerfile -t cpp-builder .`)。
+  (等价于在 DinD 内执行 `docker build -f server/docker/Dockerfile -t cppplay-builder .`)。
   更换构建镜像后重新执行 `docker compose --profile tools run --rm builder-image` 即可。
 - **数据持久化**: 后端数据(`server/data`: 作品仓库 / 数据库 / 产物)挂载到命名卷
   `server-data`; DinD 的镜像与构建缓存挂载到 `dind-data`。删除卷即清空数据。
@@ -116,7 +158,7 @@ docker compose --profile tools run --rm builder-image   # (重新)构建 cpp-bui
   (反代场景设置 `TRUST_PROXY=1`)。
 - **可选项**: 注册开关 / SMTP 邮件 / webhook 密钥等环境变量在 compose 的 `server` 服务中按需配置。
 
-> 本地开发时若已在宿主机 Docker 里构建过 `cpp-builder`, 它与 DinD 内部的镜像是两份独立副本,
+> 本地开发时若已在宿主机 Docker 里构建过 `cppplay-builder`, 它与 DinD 内部的镜像是两份独立副本,
 > 互不影响; 两种部署方式(容器化 / 宿主机)数据目录也彼此独立, 不会串数据。
 
 ### 容器构建（安全模式，推荐生产部署）
@@ -126,7 +168,7 @@ docker compose --profile tools run --rm builder-image   # (重新)构建 cpp-bui
 ```bash
 # 1. 构建镜像(首次): emsdk + git + 离线预下载 SDL2 端口 + 固化缓存副本
 #    宿主机部署:
-server/docker/build-image.sh   # 等价于 docker build -f server/docker/Dockerfile -t cpp-builder .
+server/docker/build-image.sh   # 等价于 docker build -f server/docker/Dockerfile -t cppplay-builder .
 #    容器化部署(DinD): 镜像必须装入 DinD 守护进程内部
 #    docker compose --profile tools run --rm builder-image
 
@@ -220,9 +262,11 @@ cd server && npm test
 | `EMCC` | 自动探测 | 本地模式 emcc 完整路径 |
 | `GIT_BASE_URL` | 空 | 对外 git 远程地址前缀（如 `ssh://user@host:2222`；为空时用本机文件路径） |
 | `WEBHOOK_SECRET` | 空 | 内部 webhook 校验密钥（设置后 git hook 自动携带） |
-| `PUBLIC_URL` | `http://127.0.0.1:PORT` | 对外访问地址 |
+| `PUBLIC_URL` | `http://127.0.0.1:PORT` | 对外访问地址(同时作为前端 SSR 数据回环地址与 SEO canonical/sitemap 基址) |
+| `NEXT_INTERNAL_URL` | `http://127.0.0.1:3010` | 内部 Next.js 服务地址(Express 页面反代目标) |
+| `NEXT_INTERNAL_PORT` | `3010` | start-all.js 拉起 Next.js standalone 时的内部端口 |
 | `BUILD_MODE` | `auto` | 构建模式：`auto`（Docker 可用且镜像存在→容器，否则本地）/ `container`（强制容器）/ `local`（宿主机 emcc） |
-| `BUILD_IMAGE` | `cpp-builder:latest` | 构建容器镜像名 |
+| `BUILD_IMAGE` | `cppplay-builder:latest` | 构建容器镜像名 |
 | `BUILD_TIMEOUT_MS` | `60000` | 单次构建超时（默认 60 秒） |
 | `BUILD_WORKER_CPUS` | `1` | 构建容器 CPU 上限（核） |
 | `BUILD_WORKER_MEM_MB` | `2048` | 构建容器内存上限（MB） |

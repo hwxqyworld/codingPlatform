@@ -272,9 +272,13 @@ export function createAuth(cfg, db, mailer) {
       const creator = db.getUser(user);
       if (!creator) return challenge(res, '账号不存在');
       const okPassword = creator.password_hash && verifyPassword(secret, creator.password_hash);
-      const okToken = creator.token && crypto.timingSafeEqual(
-        Buffer.from(creator.token), Buffer.from(secret),
-      );
+      // 会话 token 长度固定, 与密码不同长时直接不匹配(timingSafeEqual 要求等长)
+      const secretBuf = Buffer.from(secret);
+      const tokenBuf = creator.token ? Buffer.from(creator.token) : null;
+      const okToken =
+        !!tokenBuf &&
+        tokenBuf.length === secretBuf.length &&
+        crypto.timingSafeEqual(tokenBuf, secretBuf);
       if (!okPassword && !okToken) return challenge(res, '账号或密码不正确');
       req.creator = creator.name;
       req.user = creator;
@@ -302,9 +306,13 @@ export function createAuth(cfg, db, mailer) {
       const creator = db.getUser(user);
       if (!creator) return next();
       const okPassword = creator.password_hash && verifyPassword(secret, creator.password_hash);
-      const okToken = creator.token && crypto.timingSafeEqual(
-        Buffer.from(creator.token), Buffer.from(secret),
-      );
+      // 会话 token 长度固定, 与密码不同长时直接不匹配(timingSafeEqual 要求等长)
+      const secretBuf = Buffer.from(secret);
+      const tokenBuf = creator.token ? Buffer.from(creator.token) : null;
+      const okToken =
+        !!tokenBuf &&
+        tokenBuf.length === secretBuf.length &&
+        crypto.timingSafeEqual(tokenBuf, secretBuf);
       if (!okPassword && !okToken) return next();
       req.creator = creator.name;
       req.user = creator;
@@ -313,7 +321,7 @@ export function createAuth(cfg, db, mailer) {
   }
 
   function challenge(res, message) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="cpp-platform"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="cppplay"');
     return res.status(401).json({ ok: false, error: message });
   }
 

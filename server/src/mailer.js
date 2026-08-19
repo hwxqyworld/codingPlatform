@@ -35,13 +35,13 @@ export function createMailer(cfg) {
   async function sendVerification({ to, creator, token, kind }) {
     const link = verifyLink(token);
     const isRebind = kind === 'change_email';
-    const subject = isRebind ? '确认更换邮箱 - C++ 编程平台' : '验证你的邮箱 - C++ 编程平台';
+    const subject = isRebind ? '确认更换邮箱 - 创玩 · C++ 创作平台' : '验证你的邮箱 - 创玩 · C++ 创作平台';
     const html = `<!doctype html><html><body style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#222">
-      <h2 style="margin-top:0">${isRebind ? '确认更换邮箱' : '欢迎来到 C++ 编程平台'}</h2>
+      <h2 style="margin-top:0">${isRebind ? '确认更换邮箱' : '欢迎来到创玩'}</h2>
       <p>你好 <b>${escapeHtml(creator)}</b>：</p>
       <p>${isRebind
         ? '你请求把账号邮箱更换为这个地址。点击下方按钮完成换绑：'
-        : '你正在注册 C++ 编程平台账号。点击下方按钮验证邮箱并完成注册：'}</p>
+        : '你正在注册创玩 · C++ 创作平台账号。点击下方按钮验证邮箱并完成注册：'}</p>
       <p style="text-align:center;margin:28px 0">
         <a href="${link}" style="display:inline-block;background:#3b82f6;color:#fff;padding:10px 22px;border-radius:6px;text-decoration:none">${isRebind ? '确认更换邮箱' : '验证邮箱'}</a>
       </p>

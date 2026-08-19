@@ -1,0 +1,16 @@
+{
+  "name": "创玩 · C++ 创作平台",
+  "short_name": "创玩",
+  "description": "用 C++/SDL2 创作, 浏览器即玩。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,6 +1,12 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { resolveConfig } from './config.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// 前端 standalone 产物目录(与 app.js 的默认值一致; index.js 的 cfg 是独立对象)
+const nextStandaloneDir = path.join(__dirname, '..', '..', 'web', '.next', 'standalone');
 
 /**
  * 服务入口。
@@ -17,13 +23,13 @@ const app = await createApp(cfg);
 const server = app.listen(cfg.port, cfg.host, () => {
   app.set('webhookUrl', `http://127.0.0.1:${server.address().port}/api/internal/publish`);
   console.log('==============================================');
-  console.log('  C++ 编程平台后端已启动');
+  console.log('  创玩 · C++ 创作平台后端已启动');
   console.log(`  接口地址:   http://127.0.0.1:${server.address().port}`);
   console.log(`  数据目录:   ${cfg.dataDir}`);
   console.log(`  构建模式:   ${cfg.buildMode === 'container' ? '容器(安全模式)' : '本地 emcc(降级)'}`);
   console.log(`  主页窗口:   最近 ${cfg.homeWindowDays} 天有更新(推送 main 即算一次更新)`);
   console.log(`  邮件服务:   ${cfg.smtp.host ? `SMTP(${cfg.smtp.host}:${cfg.smtp.port})` : '开发模式(验证链接打印到控制台)'}`);
-  console.log(`  前端页面:   ${fs.existsSync(cfg.webDistDir) ? '已构建(同端口访问)' : '开发模式(Vite 5173 端口)'}`);
+  console.log(`  前端页面:   ${fs.existsSync(nextStandaloneDir) ? '已构建(Next.js standalone, 同端口访问)' : '开发模式(需另开终端: cd web && npm run dev, 端口 3010)'}`);
   console.log('==============================================');
 });
 

@@ -32,11 +32,30 @@ export async function createApp(options = {}) {
   cfg.templatesDir = path.join(__dirname, 'templates');
   cfg.shellFile = path.join(__dirname, 'shell.html');
   cfg.webDistDir = options.webDistDir || path.join(__dirname, '..', '..', 'web', 'dist');
+  cfg.nextStandaloneDir =
+    options.nextStandaloneDir || path.join(__dirname, '..', '..', 'web', '.next', 'standalone');
 
   const app = express();
   app.disable('x-powered-by');
   if (cfg.trustProxy) app.set('trust proxy', cfg.trustProxy); // 反向代理场景下取真实协议/IP
   app.use(express.json({ limit: '4mb' }));
+
+  // —— CORS ——
+  // 仅允许白名单内的 Origin 跨域访问(cfg.corsOrigins, 默认 https://coding.xqyworld.cn)。
+  // 同源请求(本机 3000 直接访问 /api)不携带跨域 Origin, 不受影响。
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && cfg.corsOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      if (req.method === 'OPTIONS') return res.sendStatus(204); // 预检请求直接放行
+    }
+    next();
+  });
 
   // git hook 需要回调平台的 webhook 地址; 服务器实际端口在 listen 之后才确定,
   // 因此这里用"惰性读取"的方式, 由 index.js / 测试在启动后 app.set('webhookUrl', ...)。
@@ -118,7 +137,7 @@ async function resolveBuildMode(cfg, docker) {
   try {
     await docker.ping();
     if (await docker.imageExists(cfg.buildImage)) return 'container';
-    console.log('[build] Docker 可达但缺少构建镜像, 回退本地模式; 构建镜像: docker build -f server/docker/Dockerfile -t cpp-builder .');
+    console.log('[build] Docker 可达但缺少构建镜像, 回退本地模式; 构建镜像: docker build -f server/docker/Dockerfile -t cppplay-builder .');
   } catch (err) {
     console.log('[build] Docker 不可用, 回退本地模式:', err?.message || err);
   }

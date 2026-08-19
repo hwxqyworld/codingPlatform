@@ -67,7 +67,7 @@ export function createPublisher({ cfg, db, git, compiler, buildQueue }) {
     }
     db.setBuild(workId, sha, 'building', '');
 
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-build-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-build-'));
     try {
       const srcDir = path.join(root, 'src');
       await git.exportTree(workId, 'main', srcDir); // 物化 main 快照到临时目录

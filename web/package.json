@@ -1,23 +1,28 @@
 {
-  "name": "cpp-platform-web",
-  "version": "1.0.0",
+  "name": "cppplay-web",
+  "version": "2.0.0",
   "private": true,
-  "description": "C++ 编程平台前端 —— Vite + React + Monaco 在线编辑器",
-  "type": "module",
+  "description": "创玩 · C++ 创作平台前端 —— Next.js(App Router) + React 19 + TypeScript(strict)",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "next dev -p 3010",
+    "predev": "node scripts/copy-monaco.mjs",
+    "build": "next build",
+    "prebuild": "node scripts/copy-monaco.mjs",
+    "postbuild": "node scripts/prepare-standalone.mjs",
+    "start": "next start -p 3010",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@monaco-editor/react": "^4.6.0",
+    "@monaco-editor/react": "^4.7.0",
     "monaco-editor": "^0.52.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0"
+    "next": "15.5.23",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^5.4.11"
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.7.2"
   }
 }

@@ -28,7 +28,7 @@ export function makeStubCompiler() {
  *   - close() 关闭服务器并删除数据目录, 不残留任何后台进程
  */
 export async function startServer(options = {}) {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-test-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-test-'));
   // 默认本地模式(不依赖 Docker, 行为确定); 容器模式测试通过 options 覆盖
   const app = await createApp({ dataDir, port: 0, buildMode: 'local', ...options });
   const server = app.listen(0, '127.0.0.1');

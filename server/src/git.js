@@ -144,7 +144,7 @@ export function createGitService(cfg, deps) {
     fs.mkdirSync(editor, { recursive: true });
 
     // 首提交模板: 宿主机写入临时目录(平台自有文件, 安全), 容器内 git 提交
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-init-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-init-'));
     try {
       for (const [rel, content] of Object.entries(files)) {
         const abs = safeJoin(tmp, rel);
@@ -222,7 +222,7 @@ git --git-dir=/data/$1.git --work-tree=/worktree reset --hard develop
     const secret = cfg.webhookSecret;
     const header = secret ? `-H 'X-Webhook-Secret: ${secret}' ` : '';
     const script = `#!/bin/sh
-# 由 C++ 编程平台自动生成, 请勿手动修改
+# 由创玩 · C++ 创作平台自动生成, 请勿手动修改
 # main 分支被推送 -> 通知平台公开作品并执行构建
 while read old_rev new_rev ref; do
   case "$ref" in

@@ -351,7 +351,7 @@ test('符号链接防护: 编辑器目录中的符号链接被拒绝读取/列�
 // ---------------- 启动恢复 ----------------
 
 test('启动恢复: 上次进程退出时排队中/构建中的作品重新入队', async () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-recover-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-recover-'));
   let app1 = null;
   let app2 = null;
   let server1 = null;
@@ -464,7 +464,7 @@ test('启动清理: 上次进程残留的孤儿构建容器被销毁', async () 
 });
 
 test('启动清理: 上次进程残留的 .staging-* 临时产物目录被清除', async () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-sweep-'));
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-sweep-'));
   let app = null;
   try {
     // 模拟上次进程异常退出残留: 一个 .staging-* 目录(含恶意内容) + 一个正式产物 current
@@ -491,7 +491,7 @@ test('启动清理: 上次进程残留的 .staging-* 临时产物目录被清除
 
 test('模式检测: auto + Docker 可用且镜像存在 -> 容器模式', async () => {
   const { docker } = makeFakeDocker({ imageExists: true });
-  const app = await createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-mode-')), port: 0, buildMode: 'auto', docker });
+  const app = await createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-mode-')), port: 0, buildMode: 'auto', docker });
   assert.equal(app.locals.buildQueue !== null, true, '容器模式应有构建队列');
   await app.locals.buildQueue.stop();
   app.locals.db.close();
@@ -499,7 +499,7 @@ test('模式检测: auto + Docker 可用且镜像存在 -> 容器模式', async 
 
 test('模式检测: auto + 镜像缺失 -> 回退本地模式', async () => {
   const { docker } = makeFakeDocker({ imageExists: false });
-  const app = await createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-mode-')), port: 0, buildMode: 'auto', docker });
+  const app = await createApp({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-mode-')), port: 0, buildMode: 'auto', docker });
   assert.equal(app.locals.buildQueue, null, '本地模式不应有构建队列');
   app.locals.db.close();
 });

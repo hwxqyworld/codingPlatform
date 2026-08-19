@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *   DATA_DIR          数据目录(默认 server/data)
  *   PUBLIC_URL        对外访问地址(默认 http://127.0.0.1:PORT)
  *   GIT_BASE_URL      对外 git 远程地址前缀(默认空 = 使用本机文件路径)
+ *   CORS_ORIGINS      跨域允许的 Origin 白名单, 逗号分隔(默认 https://coding.xqyworld.cn)
  *   HOME_WINDOW_DAYS  主页收录窗口, 最近 N 天有更新(默认 30)
  *   BUILD_TIMEOUT_MS  单次构建超时(默认 5 分钟)
  *   EMCC              emcc 可执行文件路径(默认自动探测, 无需 .bat/.exe 后缀)
@@ -43,7 +44,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *                        auto: Docker 可用且镜像存在 → container, 否则 local
  *                        local: 宿主机 emcc 直接编译(开发/降级)
  *                        container: 强制容器构建(Docker 不可用时构建报错)
- *   BUILD_IMAGE         构建容器镜像名(默认 cpp-builder:latest)
+ *   BUILD_IMAGE         构建容器镜像名(默认 cppplay-builder:latest)
  *   BUILD_TIMEOUT_MS    单次构建超时(默认 60 秒)
  *   BUILD_WORKER_CPUS   构建容器 CPU 上限(默认 1 核)
  *   BUILD_WORKER_MEM_MB 构建容器内存上限(默认 2GB)
@@ -74,12 +75,24 @@ export function resolveConfig(overrides = {}) {
     publicUrl: env.PUBLIC_URL || `http://127.0.0.1:${port}`,
     gitBaseUrl: env.GIT_BASE_URL || '',
 
+    // —— 跨域(CORS)白名单 ——
+    // 仅允许列出的 Origin 跨域访问 API; 可经 CORS_ORIGINS 追加(逗号分隔)
+    corsOrigins: (env.CORS_ORIGINS || 'https://coding.xqyworld.cn')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+
+    // —— 前端(Next.js) ——
+    // Express 是唯一对外入口, 页面请求反向代理到内部 Next 服务(开发: next dev;
+    // 生产: standalone server.js, 由 start-all.js 拉起)
+    nextInternalUrl: env.NEXT_INTERNAL_URL || 'http://127.0.0.1:3010',
+
     // —— 主页规则 ——
     homeWindowDays: Number(env.HOME_WINDOW_DAYS || overrides.homeWindowDays || 30),
 
     // —— 构建 ——
     buildMode: env.BUILD_MODE || overrides.buildMode || 'auto', // auto | local | container
-    buildImage: env.BUILD_IMAGE || overrides.buildImage || 'cpp-builder:latest',
+    buildImage: env.BUILD_IMAGE || overrides.buildImage || 'cppplay-builder:latest',
     buildTimeoutMs: Number(env.BUILD_TIMEOUT_MS || overrides.buildTimeoutMs || 60 * 1000), // 单次构建超时(默认 60 秒)
     emcc: env.EMCC || 'emcc',
     maxBuildLogBytes: 200 * 1024,

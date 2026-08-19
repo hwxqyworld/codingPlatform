@@ -5,6 +5,7 @@ import multer from 'multer';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { AppError } from './errors.js';
+import { createWebProxy } from './webProxy.js';
 
 /**
  * 路由层 —— 平台 REST API + git-over-HTTP + 作品运行产物静态托管 + 前端静态资源托管。
@@ -109,7 +110,7 @@ export function registerRoutes(app, { cfg, db, git, auth, publisher, compiler, b
   // ---------------- 基础 ----------------
 
   app.get('/api/health', (req, res) =>
-    res.json({ ok: true, name: 'cpp-platform', time: Date.now() }),
+    res.json({ ok: true, name: 'cppplay', time: Date.now() }),
   );
 
   /** 基础安全响应头 */
@@ -464,13 +465,13 @@ export function registerRoutes(app, { cfg, db, git, auth, publisher, compiler, b
       const isOwner = req.creator && req.creator === work.creator;
       if (isWrite) {
         if (!isOwner) {
-          res.setHeader('WWW-Authenticate', 'Basic realm="cpp-platform"');
+          res.setHeader('WWW-Authenticate', 'Basic realm="cppplay"');
           return res.status(401).json({ ok: false, error: '请使用作品创作者的账号认证后再推送' });
         }
       } else {
         const isPublic = work.publishedSha && db.hasValidBuild(work.id);
         if (!isPublic && !isOwner) {
-          res.setHeader('WWW-Authenticate', 'Basic realm="cpp-platform"');
+          res.setHeader('WWW-Authenticate', 'Basic realm="cppplay"');
           return res.status(401).json({ ok: false, error: '作品未公开, 仅创作者本人可访问' });
         }
       }
@@ -580,23 +581,19 @@ export function registerRoutes(app, { cfg, db, git, auth, publisher, compiler, b
     })(req, res, next);
   });
 
-  // ---------------- 前端静态资源(生产模式) ----------------
+  // ---------------- 前端页面(Next.js, 经内部服务反向代理) ----------------
 
-  const distDir = cfg.webDistDir;
-  if (fs.existsSync(distDir)) {
-    app.use(express.static(distDir));
-    // SPA 回退: 前端路由交给 index.html; 未匹配的 API / 产物路径返回 JSON 404
-    // (注意用带斜杠的前缀, 避免误伤 /work/... 等前端路由)
-    app.get('*', (req, res) => {
-      if (req.path.startsWith('/api/') || req.path.startsWith('/w/') || req.path.startsWith('/git/')) {
-        return res.status(404).json({ ok: false, error: '接口不存在' });
-      }
-      res.sendFile(path.join(distDir, 'index.html'));
-    });
-  } else {
-    // 开发模式: 前端由 Vite 开发服务器提供(见 web/vite.config.js 的代理)
-    app.use((req, res) => res.status(404).json({ ok: false, error: '接口不存在' }));
-  }
+  // 未匹配的 API / 产物 / git 路径返回 JSON 404(不转发给前端)
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/w/') || req.path.startsWith('/git/')) {
+      return res.status(404).json({ ok: false, error: '接口不存在' });
+    }
+    next();
+  });
+
+  // Express 直连 /api /w /git; 其余请求(页面 / _next 静态资源 / 图标)交给 Next。
+  // 开发模式: next dev -p 3010(需另开终端); 生产模式: start-all.js 拉起 standalone。
+  app.use(createWebProxy(cfg.nextInternalUrl));
 
   // ---------------- 统一错误处理 ----------------
 

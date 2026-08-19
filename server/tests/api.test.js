@@ -26,7 +26,7 @@ after(async () => {
 test('健康检查', async () => {
   const d = await srv.api('/api/health');
   assert.equal(d.ok, true);
-  assert.equal(d.name, 'cpp-platform');
+  assert.equal(d.name, 'cppplay');
 });
 
 test('账号注册/验证/登录与身份', async () => {
@@ -266,7 +266,7 @@ test('git 命令行推送 main 也能触发发布(hook 全链路)', async () => 
   remote.username = '张三';
   remote.password = 'test-pass-1234';
 
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cppp-clone-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cppplay-clone-'));
   try {
     await execFileP('git', ['clone', remote.href, 'repo'], { cwd: tmp, encoding: 'utf8', windowsHide: true, env: GIT_ENV });
     const repo = path.join(tmp, 'repo');
