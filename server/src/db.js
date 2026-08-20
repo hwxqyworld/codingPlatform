@@ -72,7 +72,33 @@ export function createDb(cfg) {
       email      TEXT NOT NULL,        -- 待验证的邮箱
       created_at INTEGER NOT NULL
     );
+  `);
 
+  // —— 列迁移: 必须放在索引/数据回填之前 ——
+  // 旧版本数据卷(复用 server-data 升级)的表可能缺少新列:
+  //   creators 缺账号字段(密码/邮箱/资料), works 缺构建状态字段。
+  // 先 ALTER TABLE 补齐, 后续的 CREATE UNIQUE INDEX / 回填 SQL 才不会因
+  // "no such column" 崩溃(此前索引与建表在同一批 exec 里, 旧库启动即崩)。
+  const migrateSql = migrateColumns('creators', [
+    ['password_hash', 'TEXT'],
+    ['email', 'TEXT'],
+    ['email_verified', 'INTEGER NOT NULL DEFAULT 0'],
+    ['nickname', 'TEXT'],
+    ['bio', "TEXT NOT NULL DEFAULT ''"],
+    ['avatar', "TEXT NOT NULL DEFAULT ''"],
+  ]);
+  if (migrateSql) db.exec(migrateSql);
+
+  const migrateWorksSql = migrateColumns('works', [
+    ['last_update', 'INTEGER NOT NULL DEFAULT 0'],
+    ['published_sha', 'TEXT'],
+    ['build_status', "TEXT NOT NULL DEFAULT 'none'"],
+    ['build_log', "TEXT NOT NULL DEFAULT ''"],
+  ]);
+  if (migrateWorksSql) db.exec(migrateWorksSql);
+
+  // —— 索引与数据回填(依赖上面的列迁移已生效) ——
+  db.exec(`
     -- 邮箱唯一(已验证邮箱不可重复; SQLite 部分索引, NULL 互不冲突)
     CREATE UNIQUE INDEX IF NOT EXISTS idx_creators_email
       ON creators(email) WHERE email IS NOT NULL AND email != '';
@@ -84,17 +110,6 @@ export function createDb(cfg) {
       FROM works
       WHERE published_sha IS NOT NULL AND build_status IN ('success', 'failed');
   `);
-
-  // 迁移: 旧版本 creators 表没有账号字段, 逐列补齐(幂等; 此时表已存在)
-  const migrateSql = migrateColumns('creators', [
-    ['password_hash', 'TEXT'],
-    ['email', 'TEXT'],
-    ['email_verified', 'INTEGER NOT NULL DEFAULT 0'],
-    ['nickname', 'TEXT'],
-    ['bio', "TEXT NOT NULL DEFAULT ''"],
-    ['avatar', "TEXT NOT NULL DEFAULT ''"],
-  ]);
-  if (migrateSql) db.exec(migrateSql);
 
     const toUser = (r) =>
       r && {

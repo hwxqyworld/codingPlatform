@@ -12,6 +12,11 @@
 #   docker compose --profile tools run --rm builder-image   # 把 cppplay-builder 装入 DinD
 #   # 访问 http://127.0.0.1:3000
 #
+# 升级部署(从旧版 cppp-* 容器/旧 server-data 卷升级):
+#   docker compose down                         # 先停掉旧容器, 释放 3000 端口
+#   docker compose up -d --build                # 再重建(旧库会自动迁移, 数据保留)
+#   # 若旧容器仍占用 3000, 新 server 会启动失败: docker ps -a 排查残留 cppp-* 容器
+#
 # 说明:
 #   - 构建容器(1 核/2GB/禁网/丢弃能力/非特权)由后端经 DinD 创建,
 #     与宿主机 Docker 完全隔离; cppplay-builder 镜像必须存在于 DinD 内部
@@ -68,6 +73,12 @@ services:
       # TRUST_PROXY: "1"                  # 位于 nginx 等反代之后时启用
     volumes:
       - server-data:/app/server/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/health >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
     depends_on:
       dind:
         condition: service_healthy
