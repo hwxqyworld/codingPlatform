@@ -17,7 +17,7 @@
 # ============================================================
 
 # ---- 阶段 1: 构建前端(Next.js, standalone 产物) ----
-FROM node:22-bookworm-slim AS web-builder
+FROM docker.1ms.run/node:22-bookworm-slim AS web-builder
 WORKDIR /build
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -26,7 +26,7 @@ COPY web/ ./
 RUN npm run build
 
 # ---- 阶段 2: 后端运行时 ----
-FROM node:22-bookworm-slim
+FROM docker.1ms.run/node:22-bookworm-slim
 
 # git: git-over-HTTP(http-backend) + post-receive hook; curl: hook 回调 webhook
 RUN apt-get update \
