@@ -257,8 +257,8 @@ export function createBuildQueue({ cfg, db, git, docker }) {
       // 3. 把该作品裸仓库拷入容器(仅本作品数据可见)
       await putRepoInto(w, workId, wk);
 
-      // 4. 属主改为非特权构建用户
-      await exec(['chown', '-R', 'builder:builder', wk], { user: 'root', timeoutMs: 60000 });
+      // 4. 属主改为非特权构建用户(数字 UID 1000, 用户名不硬编码)
+      await exec(['chown', '-R', '1000:1000', wk], { user: 'root', timeoutMs: 60000 });
 
       // 5. 导出快照 + 编译(容器内 git + emcc; 60s 超时: 脚本自超时 + 此处兜底强杀)
       const buildEnv = [
@@ -269,7 +269,7 @@ export function createBuildQueue({ cfg, db, git, docker }) {
       ];
       const r = await exec(
         ['sh', '-c', `node /opt/platform/build.js ${repo} ${src} ${out}`],
-        { user: 'builder', env: buildEnv, timeoutMs: cfg.buildTimeoutMs + 15000 },
+        { user: '1000', env: buildEnv, timeoutMs: cfg.buildTimeoutMs + 15000 },
       );
 
       // 构建超时(容器已被强杀): 直接失败并附上已捕获的输出

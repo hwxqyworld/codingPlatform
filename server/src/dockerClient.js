@@ -117,7 +117,9 @@ export function createDockerClient() {
     const container = await docker.createContainer({
       Image: opts.image,
       Cmd: opts.cmd || ['sleep', 'infinity'],
-      User: opts.user || 'builder',
+      // 构建镜像保证存在 UID 1000 用户(用户名随基础镜像变化, 不硬编码),
+      // 以数字 UID 引用, 规避 "unable to find user" 类错误
+      User: opts.user || '1000',
       Env: opts.env || [],
       // 平台标签: 启动时据此清理上次进程残留的孤儿容器(未持久化)
       Labels: { 'cppp.platform': 'build-worker' },
