@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # cppplay-builder —— 平台构建容器镜像
 #
 # 安全模型:
@@ -24,6 +24,12 @@ FROM docker.1ms.run/emscripten/emsdk:latest
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
+
+# 将 Emscripten 端口下载的 GitHub 地址替换为 gh-proxy 镜像
+RUN sed -i 's|https://github.com/|https://gh-proxy.org/github.com/|g' \
+        /emsdk/upstream/emscripten/tools/ports.py \
+    && sed -i 's|https://github.com/|https://gh-proxy.org/github.com/|g' \
+        /emsdk/upstream/emscripten/tools/ports/__init__.py 2>/dev/null || true
 
 # —— emscripten 环境(镜像构建期固化) ——
 # 基础镜像已内置 EMSDK=/emsdk 与 PATH(emcc/node), 但其 entrypoint 只在
